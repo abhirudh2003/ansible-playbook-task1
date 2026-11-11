@@ -1,0 +1,45 @@
+
+---
+- name: Install Docker and deploy Nginx on AWS
+  hosts: docker_servers
+  become: true
+  gather_facts: true
+
+  vars:
+    docker_image: "nginx:alpine"
+    container_name: "my-nginx"
+    host_port: 8080
+    container_port: 80
+
+  tasks:
+    - name: Update package cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install Docker and Python Docker SDK
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - python3-docker
+        state: present
+
+    - name: Start Docker and enable it at boot
+      ansible.builtin.service:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Pull the Nginx image
+      community.docker.docker_image:
+        name: "{{ docker_image }}"
+        source: pull
+
+    - name: Run the Nginx container
+      community.docker.docker_container:
+        name: "{{ container_name }}"
+        image: "{{ docker_image }}"
+        state: started
+        restart_policy: unless-stopped
+        published_ports:
+          - "{{ host_port }}:{{ container_port }}"
